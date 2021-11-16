@@ -1,13 +1,12 @@
 !----------------------------------------------------------------------------------------
-subroutine initialize_outgrid(ingrid, outgrid, flnm, nalt, dz)
+subroutine output_header(grid, flnm, nalt, dz)
   
    use netcdf
    use module_grid
 
    implicit none
 
-   type(gfsgrid),    intent(inout) :: ingrid
-   type(gfsgrid),    intent(out)   :: outgrid
+   type(gfsgrid),    intent(inout) :: grid
    character(len=*), intent(in)    :: flnm
    integer,          intent(in)    :: nalt
    real,             intent(in)    :: dz
@@ -17,25 +16,21 @@ subroutine initialize_outgrid(ingrid, outgrid, flnm, nalt, dz)
    print *, 'Enter generate_header'
    print *, 'flnm = ', trim(flnm)
   
-   ingrid%nlat = nalt
-   allocate(ingrid%alt(ingrid%nalt))
+   grid%nalt = nalt
+   allocate(grid%alt(grid%nalt))
 
-   outgrid%nlat = nalt
-   allocate(outgrid%alt(outgrid%nalt))
-
-   do i = 1, outgrid%nalt
-      ingrid%alt(i) = real(i-1)*dz
-      outgrid%alt(i) = real(i-1)*dz
+   do i = 1, grid%nalt
+      grid%alt(i) = real(i-1)*dz
    end do
 
-   call create_coord(ingrid, outgrid, flnm)
+   call create_coord(grid, flnm)
 
-   call create_var_attr(ingrid, outgrid)
+   call create_var_attr(grid)
 
   !End define mode.
-   rc = nf90_enddef(outgrid%ncid)
+   rc = nf90_enddef(grid%ncid)
    if(rc /= nf90_noerr) then
-      write(unit=0, fmt='(a,i6,a)') "Problem to enddef ncid: <", outgrid%ncid, ">."
+      write(unit=0, fmt='(a,i6,a)') "Problem to enddef ncid: <", grid%ncid, ">."
       write(unit=0, fmt='(2a)') "Error status: ", trim(nf90_strerror(rc))
       write(unit=0, fmt='(3a, i4)') &
            "Stop in file: <", __FILE__, ">, line: ", __LINE__
@@ -44,27 +39,7 @@ subroutine initialize_outgrid(ingrid, outgrid, flnm, nalt, dz)
 
    print *, 'Leave generate_header'
 
-end subroutine initialize_outgrid
-
-!----------------------------------------------------------------------------------------
-subroutine finalize_outgrid(grid)
-
-   use netcdf
-   use module_grid
-
-   implicit none
-
-   type(gfsgrid), intent(inout) :: grid
-   integer :: rc
-
-   rc =  nf90_close(grid%ncid)
-   call check_status(rc)
-
-   call finalize_ingrid(grid)
-
-   print *, 'Finished Write to file: ', trim(grid%filename)
-
-end subroutine finalize_outgrid
+end subroutine output_header
 
 !---------------------------------------------------------------------------
 subroutine create_global_attr(ncid, filename, title)
@@ -81,15 +56,14 @@ subroutine create_global_attr(ncid, filename, title)
 end subroutine create_global_attr
 
 !----------------------------------------------------------------------------------------
-subroutine create_coord(ingrid, outgrid, flnm)
+subroutine create_coord(grid, flnm)
 
    use netcdf
    use module_grid
 
    implicit none
 
-   type(gfsgrid),    intent(inout) :: ingrid
-   type(gfsgrid),    intent(inout) :: outgrid
+   type(gfsgrid),    intent(inout) :: grid
    character(len=*), intent(in)    :: flnm
 
    integer :: i, nd, rc, ncid
@@ -101,19 +75,19 @@ subroutine create_coord(ingrid, outgrid, flnm)
    print *, 'Enter create_coord'
    print *, 'flnm = ', trim(flnm)
 
-   print *, 'outgrid%nlon = ',  outgrid%nlon
-   print *, 'outgrid%nlat = ',  outgrid%nlat
-   print *, 'outgrid%nalt = ',  outgrid%nalt
-   print *, 'outgrid%npre = ',  outgrid%npre
+   print *, 'grid%nlon = ',  grid%nlon
+   print *, 'grid%nlat = ',  grid%nlat
+   print *, 'grid%nalt = ',  grid%nalt
+   print *, 'grid%npre = ',  grid%npre
 
-   print *, 'outgrid%lon = ',  outgrid%lon
-   print *, 'outgrid%lat = ',  outgrid%lat
-   print *, 'outgrid%alt = ',  outgrid%alt
-   print *, 'outgrid%pre = ',  outgrid%pre
+   print *, 'grid%lon = ',  grid%lon
+   print *, 'grid%lat = ',  grid%lat
+   print *, 'grid%alt = ',  grid%alt
+   print *, 'grid%pre = ',  grid%pre
 
    rc = nf90_noerr
 
-   outgrid%filename = trim(flnm)
+   grid%output_flnm = trim(flnm)
 
   !Create the file. 
    inquire(file=trim(flnm), exist=fileExists)
@@ -125,19 +99,19 @@ subroutine create_coord(ingrid, outgrid, flnm)
    rc = nf90_create(trim(flnm), NF90_NETCDF4, ncid)
    call check_status(rc)
 
-   outgrid%ncid = ncid
+   grid%ncid = ncid
    print *, 'ncid = ', ncid
 
-   rc = nf90_def_dim(ncid, 'lon', outgrid%nlon, outgrid%dimidlon)
+   rc = nf90_def_dim(ncid, 'lon', grid%nlon, grid%dimidlon)
    call check_status(rc)
-   rc = nf90_def_dim(ncid, 'lat', outgrid%nlat, outgrid%dimidlat)
+   rc = nf90_def_dim(ncid, 'lat', grid%nlat, grid%dimidlat)
    call check_status(rc)
-   rc = nf90_def_dim(ncid, 'alt', outgrid%nalt, outgrid%dimidalt)
+   rc = nf90_def_dim(ncid, 'alt', grid%nalt, grid%dimidalt)
    call check_status(rc)
 
    call create_global_attr(ncid, flnm, 'Data in Height level')
 
-   dimids(1) = outgrid%dimidlon
+   dimids(1) = grid%dimidlon
    nd = 1
 !--Field lon
    call nc_putAxisAttr(ncid, nd, dimids, NF90_REAL, &
@@ -146,7 +120,7 @@ subroutine create_coord(ingrid, outgrid, flnm)
                       "degree_east", &
                       "Longitude" )
 
-   dimids(1) = outgrid%dimidlat
+   dimids(1) = grid%dimidlat
 !--Field lat
    call nc_putAxisAttr(ncid, nd, dimids, NF90_REAL, &
                       'lat', &
@@ -154,7 +128,7 @@ subroutine create_coord(ingrid, outgrid, flnm)
                       "degree_north", &
                       "Latitude" )
 
-   dimids(1) = outgrid%dimidalt
+   dimids(1) = grid%dimidalt
 !--Field alt
    call nc_putAxisAttr(ncid, nd, dimids, NF90_REAL, &
                       'alt', &
@@ -163,27 +137,26 @@ subroutine create_coord(ingrid, outgrid, flnm)
                       "Altitude" )
 
   !write lon
-   call nc_put1Dvar0(ncid, 'lon', outgrid%lon, 1, outgrid%nlon)
+   call nc_put1Dvar0(ncid, 'lon', grid%lon, 1, grid%nlon)
 
   !write lat
-   call nc_put1Dvar0(ncid, 'lat', outgrid%lat, 1, outgrid%nlat)
+   call nc_put1Dvar0(ncid, 'lat', grid%lat, 1, grid%nlat)
 
   !write alt
-   call nc_put1Dvar0(ncid, 'alt', outgrid%alt, 1, outgrid%nalt)
+   call nc_put1Dvar0(ncid, 'alt', grid%alt, 1, grid%nalt)
 
   !print *, 'Leave create_coord'
 end subroutine create_coord
 
 !-------------------------------------------------------------------------------------
-subroutine create_var_attr(ingrid, outgrid)
+subroutine create_var_attr(grid)
 
    use netcdf
    use module_grid
 
    implicit none
 
-   type(gfsgrid), intent(inout) :: ingrid
-   type(gfsgrid), intent(inout) :: outgrid
+   type(gfsgrid), intent(inout) :: grid
 
    integer, dimension(6) :: dimids
    integer :: rc, nd, i
@@ -196,31 +169,31 @@ subroutine create_var_attr(ingrid, outgrid)
    missing_real = -1.0e38
    missing_int = -999999
 
-   do i = 1, ingrid%nVars
-      if(ingrid%vars(i)%nDims < 2) then
+   do i = 1, grid%nVars
+      if(grid%vars(i)%nDims < 2) then
          cycle
       end if
 
-      long_name = trim(ingrid%vars(i)%varname)
+      long_name = trim(grid%vars(i)%varname)
       units = 'unknown'
       coordinates = 'alt lat lon'
-      dimids(1) = outgrid%dimidlon
-      dimids(2) = outgrid%dimidlat
-      dimids(3) = outgrid%dimidalt
+      dimids(1) = grid%dimidlon
+      dimids(2) = grid%dimidlat
+      dimids(3) = grid%dimidalt
       nd = 3
 
-      if('TMP_P0_L1_GLL0' == trim(ingrid%vars(i)%varname)) then
+      if('TMP_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
          coordinates = 'lat lon'
          nd = 2
          long_name = 'Ground or water surface temperature'
          units = 'K'
-     !else if('TMP_P0_L1_GLL0' == trim(ingrid%vars(i)%varname)) then
+     !else if('TMP_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
       else
          cycle
       end if
 
-      call nc_putAttr(outgrid%ncid, nd, dimids, NF90_REAL, &
-                      trim(ingrid%vars(i)%varname), &
+      call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                      trim(grid%vars(i)%varname), &
                       trim(long_name), trim(units), &
                       trim(coordinates), missing_real)
    end do
@@ -228,73 +201,77 @@ subroutine create_var_attr(ingrid, outgrid)
 end subroutine create_var_attr
 
 !----------------------------------------------------------------------------------------
-subroutine interpolation(ingrid, outgrid)
+subroutine interpolation(grid)
 
    use netcdf
    use module_grid
 
    implicit none
 
-   type(gfsgrid), intent(in)    :: ingrid
-   type(gfsgrid), intent(inout) :: outgrid
+   type(gfsgrid), intent(inout) :: grid
 
    integer :: i, n, rc
 
-   real, dimension(outgrid%nlon, outgrid%nlat, outgrid%nalt) :: var3d
+   real, dimension(grid%nlon, grid%nlat, grid%nalt) :: var3d
 
    print *, 'Enter interpolation'
 
-   do i = 1, ingrid%nVars
-      if(ingrid%vars(i)%nDims < 2) cycle
+   do i = 1, grid%nVars
+      if(grid%vars(i)%nDims < 2) cycle
 
-      rc = nf90_inquire_variable(ingrid%fileid, ingrid%varids(i), &
-               ndims=ingrid%vars(i)%nDims, natts=ingrid%vars(i)%nAtts)
+      rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
+               ndims=grid%vars(i)%nDims, natts=grid%vars(i)%nAtts)
       call check_status(rc)
 
-      print *, 'Var No. ', i, ': ndims = ', ingrid%vars(i)%nDims
-      print *, 'Var No. ', i, ': name: ', trim(tile(n)%vars(i)%varname)
+      print *, 'Var No. ', i, ': ndims = ', grid%vars(i)%nDims
+      print *, 'Var No. ', i, ': name: ', trim(grid%vars(i)%varname)
 
-      rc = nf90_inquire_variable(ingrid%fileid, ingrid%varids(i), &
-               name=ingrid%vars(i)%varname)
+      rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
+               name=grid%vars(i)%varname)
       call check_status(rc)
+
+     !call interp2hgt(grid, var3d)
 
    end do
 
    print *, 'Leave interpolation'
-end subroutine interp2outgridgrid
+end subroutine interpolation
 
 !----------------------------------------------------------------------
-subroutine interp3dvar(ingrid, outgrid, var3d)
+subroutine interp2hgt(grid, var3d)
 
   use module_grid
 
   implicit none
 
-  type(gfsgrid), intent(in) :: ingrid
-  type(gfsgrid), intent(in) :: outgrid
-  real, dimension(outgrid%nlon, outgrid%nlat, outgrid%nlev), intent(out) :: var3d
+  type(gfsgrid), intent(in) :: grid
+  real, dimension(grid%nlon, grid%nlat, grid%nalt), intent(out) :: var3d
 
-  integer :: i, j, k, n, ik, jk, m
-  real :: w
+  integer :: i, j, k, n
 
-  do jk = 1, outgrid%nlat
-  do ik = 1, outgrid%nlon
-     do k = 1, outgrid%nlev
-        var3d(ik, jk, k) = 0.0
-     end do
+  real :: dz
 
-     do m = 1, outgrid%npnt
-        n = outgrid%tile(ik, jk, m)
-        i = outgrid%ilon(ik, jk, m)
-        j = outgrid%jlat(ik, jk, m)
-        w = outgrid%wgt(ik, jk, m)
-
-        do k = 1, outgrid%nlev
-           var3d(ik, jk, k) = var3d(ik, jk, k) + w*tile(n)%var3d(i, j, k)
+  do j = 1, grid%nlat
+  do i = 1, grid%nlon
+  do k = 1, grid%nalt
+     if(grid%alt(k) <= grid%hgt(i,j,grid%npre)) then
+        var3d(i, j, k) = grid%var3d(i, j, grid%npre)
+     else if(grid%alt(k) >= grid%hgt(i,j,1)) then
+        var3d(i, j, k) = grid%var3d(i, j, 1)
+     else
+        do n = 2, grid%npre
+           if(grid%alt(k) >= grid%hgt(i,j,n)) then
+              dz = (grid%alt(k) - grid%hgt(i,j,n)) &
+                 / (grid%hgt(i,j,n-1) - grid%hgt(i,j,n))
+              var3d(i, j, k) = dz*grid%var3d(i, j, n-1) &
+                 + (1.0-dz)*grid%var3d(i, j, n)
+              exit
+           end if
         end do
-     end do
+     end if
+  end do
   end do
   end do
 
-end subroutine interp3dvar
+end subroutine interp2hgt
 

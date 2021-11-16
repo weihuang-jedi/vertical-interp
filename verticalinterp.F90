@@ -6,20 +6,18 @@ PROGRAM verticalinterp
 
    IMPLICIT NONE
 
-   type(gfsgrid) :: ingrid, outgrid
+   type(gfsgrid) :: grid
    integer :: n
 
    call read_namelist('input.nml')
 
-   call initialize_ingrid(ingrid, input_flnm)
+   call initialize_grid(grid, input_flnm)
 
-   call initialize_outgrid(ingrid, outgrid, output_flnm, nalt, dz)
+   call output_header(grid, output_flnm, nalt, dz)
 
-   call interpolation(ingrid, outgrid)
+   call interpolation(grid)
 
-   call finalize_outgrid(outgrid)
-
-   call finalize_ingrid(ingrid)
+   call finalize_grid(grid)
 
 END PROGRAM verticalinterp
 

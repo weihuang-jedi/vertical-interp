@@ -13,8 +13,8 @@ module module_grid
   private
   public :: vartype
   public :: gfsgrid
-  public :: initialize_ingrid
-  public :: finalize_ingrid
+  public :: initialize_grid
+  public :: finalize_grid
   public :: check_status
 
   !-----------------------------------------------------------------------
@@ -33,7 +33,7 @@ module module_grid
   end type vartype
 
   type gfsgrid
-     character(len=1024)                   :: filename
+     character(len=1024)                   :: input_flnm, output_flnm
      integer                               :: fileid, ncid, nDims, nVars
      integer                               :: nGlobalAtts, unlimdimid
      integer, dimension(:),    allocatable :: varids, dimids, dimlen
@@ -44,7 +44,7 @@ module module_grid
      real, dimension(:),       allocatable :: lon, lat, alt, pre
 
      real, dimension(:, :),    allocatable :: var2d
-     real, dimension(:, :, :), allocatable :: var3d
+     real, dimension(:, :, :), allocatable :: var3d, hgt
 
      type(vartype), dimension(:), allocatable :: vars
   end type gfsgrid
@@ -52,7 +52,7 @@ module module_grid
 contains
 
  !-----------------------------------------------------------------------
-  subroutine initialize_ingrid(grid, flnm)
+  subroutine initialize_grid(grid, flnm)
 
     implicit none
 
@@ -64,21 +64,21 @@ contains
 
     character(len=1024) :: dimname, varname
 
-    print *, 'Enter initialize_ingrid'
-    print *, 'flnm: <', trim(flnm), '>'
+   !print *, 'Enter initialize_grid'
+   !print *, 'flnm: <', trim(flnm), '>'
 
     include_parents = 0
 
-    grid%filename = trim(flnm)
-    rc = nf90_open(trim(grid%filename), nf90_nowrite, grid%fileid)
+    grid%input_flnm = trim(flnm)
+    rc = nf90_open(trim(grid%input_flnm), nf90_nowrite, grid%fileid)
     call check_status(rc)
-    print *, 'fileid: ', grid%fileid
+   !print *, 'fileid: ', grid%fileid
 
     rc = nf90_inquire(grid%fileid, grid%nDims, grid%nVars, &
                       grid%nGlobalAtts, grid%unlimdimid)
     call check_status(rc)
-    print *, 'nVars: ', grid%nVars
-    print *, 'nDims: ', grid%nDims
+   !print *, 'nVars: ', grid%nVars
+   !print *, 'nDims: ', grid%nDims
 
     ! Allocate memory.
     allocate(grid%dimids(grid%nDims))
@@ -88,7 +88,7 @@ contains
     rc = nf90_inq_dimids(grid%fileid, grid%nDims, grid%dimids, include_parents)
     call check_status(rc)
 
-    print *, 'dimids: ', grid%dimids
+   !print *, 'dimids: ', grid%dimids
     grid%nalt = 1
 
     do i = 1, grid%nDims
@@ -110,8 +110,8 @@ contains
 
     grid%nalt = grid%npre
 
-    print *, 'grid%nlon = ', grid%nlon, ', grid%nlat = ', grid%nlat, &
-           ', grid%nalt = ', grid%nalt, ', grid%npre = ', grid%npre
+   !print *, 'grid%nlon = ', grid%nlon, ', grid%nlat = ', grid%nlat, &
+   !       ', grid%nalt = ', grid%nalt, ', grid%npre = ', grid%npre
 
    !Allocate memory.
     allocate(grid%varids(grid%nVars))
@@ -123,7 +123,7 @@ contains
     rc = nf90_inq_varids(grid%fileid, grid%nVars, grid%varids)
     call check_status(rc)
 
-    print *, 'varids: ', grid%varids
+   !print *, 'varids: ', grid%varids
 
     do i = 1, grid%nVars
        rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
@@ -138,12 +138,12 @@ contains
        rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
                                   dimids=grid%vars(i)%dimids)
        call check_status(rc)
-       print *, 'Var No. ', i, ': grid%vars(i)%dimids = ', grid%vars(i)%dimids
+      !print *, 'Var No. ', i, ': grid%vars(i)%dimids = ', grid%vars(i)%dimids
 
        rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
                 name=grid%vars(i)%varname)
        call check_status(rc)
-       print *, 'Var No. ', i, ': ', trim(grid%vars(i)%varname)
+      !print *, 'Var No. ', i, ': ', trim(grid%vars(i)%varname)
 
        if(trim(grid%vars(i)%varname) == 'lon_0') then
           allocate(grid%lon(grid%nlon))
@@ -166,12 +166,12 @@ contains
        end do
     end do
 
-   !print *, 'Leave initialize_ingrid'
+   !print *, 'Leave initialize_grid'
 
-  end subroutine initialize_ingrid
+  end subroutine initialize_grid
 
   !----------------------------------------------------------------------
-  subroutine finalize_ingrid(grid)
+  subroutine finalize_grid(grid)
 
     implicit none
 
@@ -201,11 +201,15 @@ contains
     if(allocated(grid%var2d)) deallocate(grid%var2d)
     if(allocated(grid%var3d)) deallocate(grid%var3d)
 
-    print *, 'close filename: ', trim(grid%filename)
+    print *, 'close output_flnm: ', trim(grid%output_flnm)
+    rc = nf90_close(grid%ncid)
+    call check_status(rc)
+
+    print *, 'close input_flnm: ', trim(grid%input_flnm)
     rc = nf90_close(grid%fileid)
     call check_status(rc)
 
-  end subroutine finalize_ingrid
+  end subroutine finalize_grid
 
   !----------------------------------------------------------------------
   subroutine check_status(rc)
