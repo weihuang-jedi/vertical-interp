@@ -1,65 +1,47 @@
 !-------------------------------------------------------------
-
 MODULE namelist_module
 
   implicit none
 
   integer, parameter :: nml_unit = 7
-  integer, parameter :: max_types = 5
-
-  CHARACTER(LEN=1024) :: program_name
-  character(len=1024) :: dirname
-  character(len=1024) :: output_flnm, wgt_flnm
-  character(len=128), dimension(max_types) :: data_types
-  integer :: nlat, nlon, npnt, num_types
-  logical :: generate_weights, debug_on
+  character(len=1024) :: program_name, input_flnm, output_flnm
+  integer :: nalt
+  real :: dz
+  logical :: debug_on
 
 contains
   subroutine read_namelist(file_path)
     implicit none
 
-    !! Reads Namelist from given file.
+   !Reads Namelist from given file.
     character(len=*),  intent(in)  :: file_path
     integer :: rc
 
-    ! Namelist definition.
-    namelist /control_param/ program_name, dirname, &
-                             output_flnm, wgt_flnm, &
-                             nlat, nlon, npnt, &
-                             num_types, data_types, &
-                             generate_weights
+   !Namelist definition.
+    namelist /control_param/ program_name, input_flnm, &
+                             output_flnm, nalt, dz, debug_on
 
-    program_name = 'Interpolate FV3 to regular Lat-Lon Grid'
+    program_name = 'Vertical Interpolation'
 
-   !if(generate_weights) then
-   !  dirname = 'C96/'
-   !else
-      dirname = '/work/noaa/gsienkf/weihuang/jedi/case_study/sondes/analysis.getkf.80members.36procs.uvTq/increment/'
-   !end if
+    input_flnm = '../data/gfs_4_20210101_0000_000.nc'
 
-    output_flnm = 'latlon_grid.nc'
-    wgt_flnm = 'weights.nc'
+    output_flnm = 'verticalheight.nc'
 
-    nlon = 360
-    nlat = 180
-    npnt = 4
-    num_types = 1
+    nalt = 101
+    dz = 500.0
 
-    data_types(1) = 'fv_core.res.tile'
-
-    generate_weights = .false.
     debug_on = .false.
 
-    ! Check whether file exists.
+   !Check whether file exists.
     inquire(file=file_path, iostat=rc)
 
     if(rc /= 0) then
-      write(unit=0, fmt='(3a)') 'Error: input file "', &
-                             trim(file_path), '" does not exist.'
+      write(unit=0, fmt='(3a)') 'Error: input file <', &
+                                 trim(file_path), '> does not exist.'
       return
     end if
 
-    ! Open and read Namelist file.
+   !Open and read Namelist file.
     open(action='read', file=file_path, iostat=rc, unit=nml_unit)
     read(nml=control_param, iostat=rc, unit=nml_unit)
 
@@ -68,10 +50,6 @@ contains
     end if
 
     close(nml_unit)
-
-   !print *, 'dirname: ', trim(dirname)
-   !print *, 'data_types(1): ', trim(data_types(1))
-   !print *, 'nlon, nlat, npnt = ', nlon, nlat, npnt
 
   end subroutine read_namelist
 

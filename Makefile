@@ -5,6 +5,7 @@ include make_rules
 ####################################################
 
 OBJS =	module_namelist.o \
+	module_grid.o \
 	nc_get1Dint.o \
 	nc_get1Dvar.o \
 	nc_get2Dint.o \
@@ -33,40 +34,31 @@ OBJS =	module_namelist.o \
 	nc_putGlobalIntAttr.o \
 	nc_putGlobalRealAttr.o \
 	nc_putGlobalCharAttr.o \
-	tile_module.o \
-	latlon_module.o \
-	read_weights.o \
-	output_tilegrid.o \
-	output_latlongrid.o \
 	interp_vars.o
 
 ####################################################
 
-deflt :	clean_modulde nc4_lib fv3interp2latlon
+deflt :	clean_modulde nc4_lib verticalinterp
 
 clean_modulde :
-	$(RM) latlon_module.f90 latlon_module.mod latlon_module.o tile_module.f90 tile_module.mod tile_module.o
+	$(RM) module_grid.f90 module_grid.mod module_grid.o
 
 nc4_lib : $(OBJS)
 	$(RM) libnc4.a
 	$(AR) libnc4.a $(OBJS)
 	$(RANLIB) libnc4.a
 
-fv3interp2latlon : fv3interp2latlon.o
-	$(FC) -o fv3interp2latlon.exe fv3interp2latlon.o $(FFLAGS) $(LOC_LIBS) \
+verticalinterp : verticalinterp.o
+	$(FC) -o verticalinterp.exe verticalinterp.o $(FFLAGS) $(LOC_LIBS) \
 	libnc4.a
 
 clean :
-	$(RM) libnc4.a $(OBJS) $(TEST_OBJS) \
+	$(RM) libnc4.a $(OBJS) verticalinterp.o \
 	*.f90 *.mod *.exe
 
 ####################################################
 
 # DEPENDENCIES : only dependencies after this line (don't remove the word DEPENDENCIES)
 
-#fv3interp2latlon.o : tile_module.o
-
-tile_module.o : tile_module.F90
-
-latlon_module.o : latlon_module.F90
+module_grid.o : module_grid.F90
 
