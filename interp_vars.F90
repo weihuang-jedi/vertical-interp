@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------------------------
-subroutine output_header(grid, flnm, nalt, dz)
+subroutine interpolation(grid, flnm, nalt, dz)
   
    use netcdf
    use module_grid
@@ -13,8 +13,8 @@ subroutine output_header(grid, flnm, nalt, dz)
 
    integer :: i, rc
 
-  !print *, 'Enter generate_header'
-  !print *, 'flnm = ', trim(flnm)
+   print *, 'Enter interpolation'
+   print *, 'flnm = ', trim(flnm)
   
    grid%nalt = nalt
    allocate(grid%alt(grid%nalt))
@@ -37,9 +37,13 @@ subroutine output_header(grid, flnm, nalt, dz)
       stop
    end if
 
-  !print *, 'Leave generate_header'
+   print *, 'before process'
+   call process(grid)
+   print *, 'after process'
 
-end subroutine output_header
+   print *, 'Leave interpolation'
+
+end subroutine interpolation
 
 !---------------------------------------------------------------------------
 subroutine create_global_attr(ncid, filename, title)
@@ -166,7 +170,7 @@ subroutine create_var_attr(grid)
    real    :: missing_real
    character(len=80) :: long_name, units, coordinates
 
-  !print *, 'Enter create_var_attr'
+   print *, 'Enter create_var_attr'
 
    missing_real = -1.0e38
    missing_int = -999999
@@ -224,7 +228,7 @@ subroutine create_var_attr(grid)
                          trim(coordinates), missing_real)
          rc = nf90_get_var(grid%fileid, grid%varids(i), grid%hgt)
          call check_status(rc)
-         call hgt2z(grid)
+        !call hgt2z(grid)
       else if('RH_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
          long_name = 'Relative humidity'
          units = '%'
@@ -250,12 +254,12 @@ subroutine create_var_attr(grid)
       print *, 'Var No. ', i, ': name: ', trim(grid%vars(i)%varname)
    end do
 
-  !print *, 'Leave create_var_attr'
+   print *, 'Leave create_var_attr'
 
 end subroutine create_var_attr
 
 !----------------------------------------------------------------------------------------
-subroutine interpolation(grid)
+subroutine process(grid)
 
    use netcdf
    use module_grid
@@ -266,35 +270,37 @@ subroutine interpolation(grid)
 
    integer :: i, n, rc
 
-   real, dimension(grid%nlon, grid%nlat) :: var2d
-   real, dimension(grid%nlon, grid%nlat, grid%nalt) :: var3d
+   real, dimension(:,:), allocatable :: var2d
+   real, dimension(:,:,:), allocatable :: var3d
 
-   print *, 'Enter interpolation'
+   print *, 'Enter process'
+
+   allocate(var2d(grid%nlon, grid%nlat))
+   allocate(var3d(grid%nlon, grid%nlat, grid%nalt))
 
    do i = 1, grid%nVars
       if(grid%vars(i)%nDims < 2) cycle
-
-      print *, 'Var No. ', i, ': name: ', trim(grid%vars(i)%varname)
 
       rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
                name=grid%vars(i)%varname)
       call check_status(rc)
 
-     !call interp2hgt(grid, var3d)
-
       if('TMP_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
          rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
          call check_status(rc)
+         call flip(grid, var2d)
          call nc_put2Dvar0(grid%ncid, 'TSK', &
                            var2d, 1, grid%nlon, 1, grid%nlat)
       else if('TMP_P0_L102_GLL0' == trim(grid%vars(i)%varname)) then
          rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
          call check_status(rc)
+         call flip(grid, var2d)
          call nc_put2Dvar0(grid%ncid, 'TSL', &
                            var2d, 1, grid%nlon, 1, grid%nlat)
       else if('PWAT_P0_L200_GLL0' == trim(grid%vars(i)%varname)) then
          rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
          call check_status(rc)
+         call flip(grid, var2d)
          call nc_put2Dvar0(grid%ncid, 'PW', &
                            var2d, 1, grid%nlon, 1, grid%nlat)
       else if('HGT_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
@@ -308,29 +314,36 @@ subroutine interpolation(grid)
          call nc_put3Dvar0(grid%ncid, 'T', &
                            var2d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
       else if('RH_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
-         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3du)
          call check_status(rc)
          call u2z(grid, var3d)
          call nc_put3Dvar0(grid%ncid, 'RH', &
                            var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
       else if('UGRD_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
-         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3du)
          call check_status(rc)
          call u2z(grid, var3d)
          call nc_put3Dvar0(grid%ncid, 'U', &
                            var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
       else if('VGRD_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
-         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3du)
          call check_status(rc)
          call u2z(grid, var3d)
          call nc_put3Dvar0(grid%ncid, 'V', &
                            var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+      else
+         cycle
       end if
+
+      print *, 'Var No. ', i, ': name: ', trim(grid%vars(i)%varname)
 
    end do
 
-   print *, 'Leave interpolation'
-end subroutine interpolation
+   deallocate(var2d)
+   deallocate(var3d)
+
+   print *, 'Leave process'
+end subroutine process
 
 !----------------------------------------------------------------------
 subroutine hgt2z(grid)
@@ -485,4 +498,30 @@ subroutine u2z(grid, var3d)
 
 end subroutine u2z
 
+!----------------------------------------------------------------------
+subroutine flip(grid, var2d)
+
+  use module_grid
+
+  implicit none
+
+  type(gfsgrid), intent(in) :: grid
+  real, dimension(grid%nlon, grid%nlat), intent(inout) :: var2d
+
+  integer :: i, j, jj, n
+
+  real :: v
+
+  n = grid%nlat/2
+
+  do j = 1, n
+     jj =  grid%nlat + 1 - j
+     do i = 1, grid%nlon
+        v = var2d(i, j)
+        var2d(i, j) = var2d(i, jj)
+        var2d(i, jj) = v
+     end do
+  end do
+
+end subroutine flip
 

@@ -13,9 +13,7 @@ PROGRAM verticalinterp
 
    call initialize_grid(grid, input_flnm)
 
-   call output_header(grid, output_flnm, nalt, dz)
-
-   call interpolation(grid)
+   call interpolation(grid, output_flnm, nalt, dz)
 
    call finalize_grid(grid)
 
