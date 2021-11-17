@@ -214,6 +214,22 @@ subroutine create_var_attr(grid)
          call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
                          'PW', trim(long_name), trim(units), &
                          trim(coordinates), missing_real)
+      else if('PRMSL_P0_L101_GLL0' == trim(grid%vars(i)%varname)) then
+         coordinates = 'lat lon'
+         nd = 2
+         long_name = 'Mean sea level'
+         units = 'Pa'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'SLP', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('HGT_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
+         coordinates = 'lat lon'
+         nd = 2
+         long_name = 'Terrain Height'
+         units = 'gpm'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'TER', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
       else if('TMP_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
          long_name = 'Temperature'
          units = 'K'
@@ -303,6 +319,18 @@ subroutine process(grid)
          call flip(grid, var2d)
          call nc_put2Dvar0(grid%ncid, 'PW', &
                            var2d, 1, grid%nlon, 1, grid%nlat)
+      else if('PRMSL_P0_L101_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
+         call check_status(rc)
+         call flip(grid, var2d)
+         call nc_put2Dvar0(grid%ncid, 'SLP', &
+                           var2d, 1, grid%nlon, 1, grid%nlat)
+      else if('HGT_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
+         call check_status(rc)
+         call flip(grid, var2d)
+         call nc_put2Dvar0(grid%ncid, 'TER', &
+                           var2d, 1, grid%nlon, 1, grid%nlat)
       else if('HGT_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
          call z2p(grid, var3d)
          call nc_put3Dvar0(grid%ncid, 'P', &
@@ -312,7 +340,7 @@ subroutine process(grid)
          call check_status(rc)
          call t2z(grid, var3d)
          call nc_put3Dvar0(grid%ncid, 'T', &
-                           var2d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+                           var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
       else if('RH_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
          rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3du)
          call check_status(rc)
@@ -435,7 +463,7 @@ subroutine t2z(grid, var3d)
      else if(grid%alt(k) >= grid%hgt(i,j,1)) then
         v = grid%var3dt(i, j, 1)
      else
-        do while (n > 1)
+        do while (n >= 1)
            if(grid%alt(k) <= grid%hgt(i,j,n)) then
               d = (grid%alt(k) - grid%hgt(i,j,n+1)) &
                  / (grid%hgt(i,j,n) - grid%hgt(i,j,n+1))
@@ -479,7 +507,7 @@ subroutine u2z(grid, var3d)
      else if(grid%alt(k) >= grid%hgt(i,j,nd+1)) then
         v = grid%var3du(i, j, 1)
      else
-        do while (n > 1)
+        do while (n >= 1)
            if(grid%alt(k) <= grid%hgt(i,j,n)) then
               nn = n - nd
               d = (grid%alt(k) - grid%hgt(i,j,n+1)) &
