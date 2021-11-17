@@ -13,8 +13,8 @@ subroutine output_header(grid, flnm, nalt, dz)
 
    integer :: i, rc
 
-   print *, 'Enter generate_header'
-   print *, 'flnm = ', trim(flnm)
+  !print *, 'Enter generate_header'
+  !print *, 'flnm = ', trim(flnm)
   
    grid%nalt = nalt
    allocate(grid%alt(grid%nalt))
@@ -37,7 +37,7 @@ subroutine output_header(grid, flnm, nalt, dz)
       stop
    end if
 
-   print *, 'Leave generate_header'
+  !print *, 'Leave generate_header'
 
 end subroutine output_header
 
@@ -72,18 +72,20 @@ subroutine create_coord(grid, flnm)
 
    logical :: fileExists
 
-   print *, 'Enter create_coord'
-   print *, 'flnm = ', trim(flnm)
+  !print *, 'Enter create_coord'
+  !print *, 'flnm = ', trim(flnm)
 
-   print *, 'grid%nlon = ',  grid%nlon
-   print *, 'grid%nlat = ',  grid%nlat
-   print *, 'grid%nalt = ',  grid%nalt
-   print *, 'grid%npre = ',  grid%npre
+  !print *, 'grid%nlon = ',  grid%nlon
+  !print *, 'grid%nlat = ',  grid%nlat
+  !print *, 'grid%nalt = ',  grid%nalt
+  !print *, 'grid%npth = ',  grid%npth
+  !print *, 'grid%npruv = ',  grid%npruv
 
-   print *, 'grid%lon = ',  grid%lon
-   print *, 'grid%lat = ',  grid%lat
-   print *, 'grid%alt = ',  grid%alt
-   print *, 'grid%pre = ',  grid%pre
+  !print *, 'grid%lon = ',  grid%lon
+  !print *, 'grid%lat = ',  grid%lat
+  !print *, 'grid%alt = ',  grid%alt
+  !print *, 'grid%pth = ',  grid%pth
+  !print *, 'grid%pruv = ',  grid%pruv
 
    rc = nf90_noerr
 
@@ -100,7 +102,7 @@ subroutine create_coord(grid, flnm)
    call check_status(rc)
 
    grid%ncid = ncid
-   print *, 'ncid = ', ncid
+  !print *, 'ncid = ', ncid
 
    rc = nf90_def_dim(ncid, 'lon', grid%nlon, grid%dimidlon)
    call check_status(rc)
@@ -133,7 +135,7 @@ subroutine create_coord(grid, flnm)
    call nc_putAxisAttr(ncid, nd, dimids, NF90_REAL, &
                       'alt', &
                       "Altitude Coordinate", &
-                      "upward", &
+                      "m", &
                       "Altitude" )
 
   !write lon
@@ -164,10 +166,12 @@ subroutine create_var_attr(grid)
    real    :: missing_real
    character(len=80) :: long_name, units, coordinates
 
-  !print *, 'Enter create_fv_core_var_attr'
+  !print *, 'Enter create_var_attr'
 
    missing_real = -1.0e38
    missing_int = -999999
+
+   print *, 'grid%nVars = ', grid%nVars
 
    do i = 1, grid%nVars
       if(grid%vars(i)%nDims < 2) then
@@ -187,16 +191,66 @@ subroutine create_var_attr(grid)
          nd = 2
          long_name = 'Ground or water surface temperature'
          units = 'K'
-     !else if('TMP_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'TSK', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('TMP_P0_L102_GLL0' == trim(grid%vars(i)%varname)) then
+         coordinates = 'lat lon'
+         nd = 2
+         long_name = 'Sea Level Air Temperature'
+         units = 'K'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'TSL', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('PWAT_P0_L200_GLL0' == trim(grid%vars(i)%varname)) then
+         coordinates = 'lat lon'
+         nd = 2
+         long_name = 'Precipitable water'
+         units = 'kg m-2'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'PW', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('TMP_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         long_name = 'Temperature'
+         units = 'K'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'T', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('HGT_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         long_name = 'Pressure'
+         units = 'Pa'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'P', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%hgt)
+         call check_status(rc)
+         call hgt2z(grid)
+      else if('RH_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         long_name = 'Relative humidity'
+         units = '%'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'RH', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('UGRD_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         long_name = 'U-component of wind'
+         units = 'm s-1'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'U', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
+      else if('VGRD_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         long_name = 'V-component of wind'
+         units = 'm s-1'
+         call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
+                         'V', trim(long_name), trim(units), &
+                         trim(coordinates), missing_real)
       else
          cycle
       end if
 
-      call nc_putAttr(grid%ncid, nd, dimids, NF90_REAL, &
-                      trim(grid%vars(i)%varname), &
-                      trim(long_name), trim(units), &
-                      trim(coordinates), missing_real)
+      print *, 'Var No. ', i, ': name: ', trim(grid%vars(i)%varname)
    end do
+
+  !print *, 'Leave create_var_attr'
 
 end subroutine create_var_attr
 
@@ -212,6 +266,7 @@ subroutine interpolation(grid)
 
    integer :: i, n, rc
 
+   real, dimension(grid%nlon, grid%nlat) :: var2d
    real, dimension(grid%nlon, grid%nlat, grid%nalt) :: var3d
 
    print *, 'Enter interpolation'
@@ -219,11 +274,6 @@ subroutine interpolation(grid)
    do i = 1, grid%nVars
       if(grid%vars(i)%nDims < 2) cycle
 
-      rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
-               ndims=grid%vars(i)%nDims, natts=grid%vars(i)%nAtts)
-      call check_status(rc)
-
-      print *, 'Var No. ', i, ': ndims = ', grid%vars(i)%nDims
       print *, 'Var No. ', i, ': name: ', trim(grid%vars(i)%varname)
 
       rc = nf90_inquire_variable(grid%fileid, grid%varids(i), &
@@ -232,13 +282,79 @@ subroutine interpolation(grid)
 
      !call interp2hgt(grid, var3d)
 
+      if('TMP_P0_L1_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
+         call check_status(rc)
+         call nc_put2Dvar0(grid%ncid, 'TSK', &
+                           var2d, 1, grid%nlon, 1, grid%nlat)
+      else if('TMP_P0_L102_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
+         call check_status(rc)
+         call nc_put2Dvar0(grid%ncid, 'TSL', &
+                           var2d, 1, grid%nlon, 1, grid%nlat)
+      else if('PWAT_P0_L200_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), var2d)
+         call check_status(rc)
+         call nc_put2Dvar0(grid%ncid, 'PW', &
+                           var2d, 1, grid%nlon, 1, grid%nlat)
+      else if('HGT_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         call z2p(grid, var3d)
+         call nc_put3Dvar0(grid%ncid, 'P', &
+                           var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+      else if('TMP_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         call check_status(rc)
+         call t2z(grid, var3d)
+         call nc_put3Dvar0(grid%ncid, 'T', &
+                           var2d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+      else if('RH_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         call check_status(rc)
+         call u2z(grid, var3d)
+         call nc_put3Dvar0(grid%ncid, 'RH', &
+                           var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+      else if('UGRD_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         call check_status(rc)
+         call u2z(grid, var3d)
+         call nc_put3Dvar0(grid%ncid, 'U', &
+                           var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+      else if('VGRD_P0_L100_GLL0' == trim(grid%vars(i)%varname)) then
+         rc = nf90_get_var(grid%fileid, grid%varids(i), grid%var3dt)
+         call check_status(rc)
+         call u2z(grid, var3d)
+         call nc_put3Dvar0(grid%ncid, 'V', &
+                           var3d, 1, grid%nlon, 1, grid%nlat, 1, grid%nalt)
+      end if
+
    end do
 
    print *, 'Leave interpolation'
 end subroutine interpolation
 
 !----------------------------------------------------------------------
-subroutine interp2hgt(grid, var3d)
+subroutine hgt2z(grid)
+
+  use module_grid
+
+  implicit none
+
+  type(gfsgrid), intent(inout) :: grid
+
+  integer :: i, j, k
+
+  do k = 1, grid%npth
+  do j = 1, grid%nlat
+  do i = 1, grid%nlon
+     grid%hgt(i,j,k) = grid%hgt(i,j,k)/9.8
+  end do
+  end do
+  end do
+
+end subroutine hgt2z
+
+!----------------------------------------------------------------------
+subroutine z2p(grid, var3d)
 
   use module_grid
 
@@ -247,31 +363,126 @@ subroutine interp2hgt(grid, var3d)
   type(gfsgrid), intent(in) :: grid
   real, dimension(grid%nlon, grid%nlat, grid%nalt), intent(out) :: var3d
 
-  integer :: i, j, k, n
+  integer :: i, j, k, n, jj
 
-  real :: dz
+  real :: d, v
 
   do j = 1, grid%nlat
+     jj = grid%nlat + 1 - j
   do i = 1, grid%nlon
+     n = grid%npth - 1
   do k = 1, grid%nalt
-     if(grid%alt(k) <= grid%hgt(i,j,grid%npre)) then
-        var3d(i, j, k) = grid%var3d(i, j, grid%npre)
+     if(grid%alt(k) <= grid%hgt(i,j,grid%npth)) then
+        d = (grid%alt(k) - grid%hgt(i,j,grid%npth)) &
+          / (grid%hgt(i,j,grid%npth-1) - grid%hgt(i,j,grid%npth))
+        v = d*grid%pth(grid%npth-1) + (1.0-d)*grid%pth(grid%npth)
      else if(grid%alt(k) >= grid%hgt(i,j,1)) then
-        var3d(i, j, k) = grid%var3d(i, j, 1)
+        d = (grid%alt(k) - grid%hgt(i,j,2)) &
+          / (grid%hgt(i,j,1) - grid%hgt(i,j,2))
+        v = d*grid%pth(1) + (1.0-d)*grid%pth(2)
      else
-        do n = 2, grid%npre
-           if(grid%alt(k) >= grid%hgt(i,j,n)) then
-              dz = (grid%alt(k) - grid%hgt(i,j,n)) &
-                 / (grid%hgt(i,j,n-1) - grid%hgt(i,j,n))
-              var3d(i, j, k) = dz*grid%var3d(i, j, n-1) &
-                 + (1.0-dz)*grid%var3d(i, j, n)
+        do while (n > 1)
+           if(grid%alt(k) <= grid%hgt(i,j,n)) then
+              d = (grid%alt(k) - grid%hgt(i,j,n+1)) &
+                 / (grid%hgt(i,j,n) - grid%hgt(i,j,n+1))
+              v = d*grid%pth(n) + (1.0-d)*grid%pth(n+1)
               exit
            end if
+           n = n - 1
         end do
      end if
+     var3d(i, jj, k) = v
   end do
   end do
   end do
 
-end subroutine interp2hgt
+end subroutine z2p
+
+!----------------------------------------------------------------------
+subroutine t2z(grid, var3d)
+
+  use module_grid
+
+  implicit none
+
+  type(gfsgrid), intent(in) :: grid
+  real, dimension(grid%nlon, grid%nlat, grid%nalt), intent(out) :: var3d
+
+  integer :: i, j, k, n, jj
+
+  real :: d, v
+
+  do j = 1, grid%nlat
+     jj =  grid%nlat + 1 - j
+  do i = 1, grid%nlon
+     n = grid%npth - 1
+  do k = 1, grid%nalt
+     if(grid%alt(k) <= grid%hgt(i,j,grid%npth)) then
+        v = grid%var3dt(i, j, grid%npth)
+     else if(grid%alt(k) >= grid%hgt(i,j,1)) then
+        v = grid%var3dt(i, j, 1)
+     else
+        do while (n > 1)
+           if(grid%alt(k) <= grid%hgt(i,j,n)) then
+              d = (grid%alt(k) - grid%hgt(i,j,n+1)) &
+                 / (grid%hgt(i,j,n) - grid%hgt(i,j,n+1))
+              v = d*grid%var3dt(i, j, n) &
+                + (1.0-d)*grid%var3dt(i, j, n+1)
+              exit
+           end if
+           n = n - 1
+        end do
+     end if
+     var3d(i, jj, k) = v
+  end do
+  end do
+  end do
+
+end subroutine t2z
+
+!----------------------------------------------------------------------
+subroutine u2z(grid, var3d)
+
+  use module_grid
+
+  implicit none
+
+  type(gfsgrid), intent(in) :: grid
+  real, dimension(grid%nlon, grid%nlat, grid%nalt), intent(out) :: var3d
+
+  integer :: i, j, k, n, jj, nn, nd
+
+  real :: d, v
+
+  nd = grid%npth - grid%npruv
+
+  do j = 1, grid%nlat
+     jj =  grid%nlat + 1 - j
+  do i = 1, grid%nlon
+     n = grid%npth - 1
+  do k = 1, grid%nalt
+     if(grid%alt(k) <= grid%hgt(i,j,grid%npth)) then
+        v = grid%var3du(i, j, grid%npruv)
+     else if(grid%alt(k) >= grid%hgt(i,j,nd+1)) then
+        v = grid%var3du(i, j, 1)
+     else
+        do while (n > 1)
+           if(grid%alt(k) <= grid%hgt(i,j,n)) then
+              nn = n - nd
+              d = (grid%alt(k) - grid%hgt(i,j,n+1)) &
+                 / (grid%hgt(i,j,n) - grid%hgt(i,j,n+1))
+              v = d*grid%var3du(i, j, nn) &
+                + (1.0-d)*grid%var3du(i, j, nn+1)
+              exit
+           end if
+           n = n - 1
+        end do
+     end if
+     var3d(i, jj, k) = v
+  end do
+  end do
+  end do
+
+end subroutine u2z
+
 
